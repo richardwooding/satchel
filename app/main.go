@@ -10,6 +10,7 @@ import (
 	"embed"
 	"log"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 
 	"github.com/richardwooding/satchel/internal/clip"
 	"github.com/richardwooding/satchel/internal/desk"
+	"github.com/richardwooding/satchel/internal/pair"
 )
 
 //go:embed all:frontend/dist
@@ -46,7 +48,7 @@ func main() {
 		},
 		Mac: application.MacOptions{ActivationPolicy: application.ActivationPolicyAccessory},
 		SingleInstance: &application.SingleInstanceOptions{
-			UniqueID: "com.github.richardwooding.satchel",
+			UniqueID: "com.github.richardwooding.satchel" + profileSuffix("."),
 			OnSecondInstanceLaunch: func(d application.SecondInstanceData) {
 				if !svc.handleArgs(d.Args) {
 					svc.showWindow("")
@@ -79,13 +81,20 @@ func main() {
 	})
 
 	svc.clip = clip.New(wailsText{app})
+	pairs, err := openConfigPairs()
+	if err != nil {
+		log.Printf("paired devices unavailable: %v", err)
+	}
 	svc.desk = desk.New(desk.Config{
-		RelayURL:  cfg.Relay,
-		Downloads: cfg.Downloads,
-		Clipboard: svc.clip,
-		Changed:   svc.changed,
-		Notify:    svc.notify,
+		RelayURL:   cfg.Relay,
+		Downloads:  cfg.Downloads,
+		Clipboard:  svc.clip,
+		Changed:    svc.changed,
+		Notify:     svc.notify,
+		Pairs:      pairs,
+		DeviceName: cfg.DeviceName,
 	})
+	svc.desk.StartBell()
 	svc.setupNotifications()
 	svc.setupTray()
 
@@ -94,7 +103,7 @@ func main() {
 		svc.handleArgs([]string{e.Context().URL()})
 	})
 
-	err := app.Run()
+	err = app.Run()
 	svc.desk.Close()
 	if err != nil {
 		log.Fatal(err)
@@ -155,3 +164,22 @@ type wailsText struct{ app *application.App }
 
 func (w wailsText) Text() (string, bool)  { return w.app.Clipboard.Text() }
 func (w wailsText) SetText(s string) bool { return w.app.Clipboard.SetText(s) }
+
+func openConfigPairs() (*pair.Store, error) {
+	dir, err := os.UserConfigDir()
+	if err != nil {
+		return nil, err
+	}
+	return openPairs(dir)
+}
+
+// profileSuffix namespaces a second copy on one machine — for trying pairing
+// with yourself: SATCHEL_PROFILE=b XDG_CONFIG_HOME=/tmp/b satchel. It keeps
+// the instances from forwarding to each other and from sharing a keyring
+// identity. Unset, it is empty and changes nothing.
+func profileSuffix(sep string) string {
+	if p := os.Getenv("SATCHEL_PROFILE"); p != "" {
+		return sep + p
+	}
+	return ""
+}

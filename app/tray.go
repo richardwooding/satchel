@@ -65,6 +65,9 @@ func (s *Service) refreshTray(st desk.State) {
 
 func menuShape(st desk.State) string {
 	var b strings.Builder
+	for _, p := range st.Peers {
+		fmt.Fprintf(&b, "peer:%s|%s;", p.ID, p.Name)
+	}
 	for _, x := range append(st.Shares, st.Receives...) {
 		fmt.Fprintf(&b, "%s|%s|%s;", x.Phrase, x.Title, x.Status)
 	}
@@ -78,6 +81,19 @@ func (s *Service) buildMenu(st desk.State) *application.Menu {
 	m.Add("Share a folder…").OnClick(func(*application.Context) {
 		go s.reportErr("share a folder", func() error { return s.PickFiles(true) })
 	})
+	if len(st.Peers) > 0 {
+		clip := m.AddSubmenu("Send clipboard to")
+		files := m.AddSubmenu("Send files to")
+		for _, p := range st.Peers {
+			id := p.ID
+			clip.Add(p.Name).OnClick(func(*application.Context) {
+				go s.reportErr("send the clipboard", func() error { return s.ShareClipboardTo(id) })
+			})
+			files.Add(p.Name).OnClick(func(*application.Context) {
+				go s.reportErr("send files", func() error { return s.PickFilesTo(id, false) })
+			})
+		}
+	}
 	m.AddSeparator()
 	m.Add("Receive with a phrase…").OnClick(func(*application.Context) { s.showWindow("receive") })
 	m.Add("Receive from a phone…").OnClick(func(*application.Context) {
@@ -101,6 +117,7 @@ func (s *Service) buildMenu(st desk.State) *application.Menu {
 	}
 
 	m.AddSeparator()
+	m.Add("Pair a device…").OnClick(func(*application.Context) { s.showWindow("devices") })
 	m.Add("Open satchel").OnClick(func(*application.Context) { s.showWindow("") })
 	m.AddCheckbox("Start at login", s.Autostart()).OnClick(func(c *application.Context) {
 		if err := s.SetAutostart(c.ClickedMenuItem().Checked()); err != nil {

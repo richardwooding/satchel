@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { Events } from "@wailsio/runtime";
 import { Service } from "../bindings/github.com/richardwooding/satchel/app";
-import type { Offer, Session, State } from "../bindings/github.com/richardwooding/satchel/internal/desk/models";
+import type { Offer, Pairing, Peer, Session, State } from "../bindings/github.com/richardwooding/satchel/internal/desk/models";
 
-type Tab = "send" | "receive" | "settings";
+type Tab = "send" | "receive" | "devices" | "settings";
 
-const empty: State = { shares: [], receives: [] } as unknown as State;
+const empty: State = { shares: [], receives: [], peers: [], pairings: [] } as unknown as State;
 
 function size(n: number): string {
   const u = ["B", "KB", "MB", "GB", "TB"];
@@ -19,6 +19,8 @@ export default function App() {
   const [state, setState] = useState<State>(empty);
   const shares = state.shares ?? [];
   const receives = state.receives ?? [];
+  const peers = state.peers ?? [];
+  const pairings = state.pairings ?? [];
   const [busy, setBusy] = useState("");
   const [toast, setToast] = useState("");
 
@@ -42,10 +44,11 @@ export default function App() {
       <header className="top">
         <div className="brand"><Bag /> satchel</div>
         <nav className="tabs" role="tablist">
-          {(["send", "receive", "settings"] as Tab[]).map((t) => (
+          {(["send", "receive", "devices", "settings"] as Tab[]).map((t) => (
             <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>
               {t === "send" ? `Send${shares.length ? ` · ${shares.length}` : ""}`
-                : t === "receive" ? `Receive${receives.length ? ` · ${receives.length}` : ""}` : "⚙"}
+                : t === "receive" ? `Receive${receives.length ? ` · ${receives.length}` : ""}`
+                : t === "devices" ? "Devices" : "⚙"}
             </button>
           ))}
         </nav>
@@ -53,6 +56,7 @@ export default function App() {
       <main>
         {tab === "send" && <Send shares={shares} busy={busy} fail={fail} />}
         {tab === "receive" && <Receive receives={receives} fail={fail} />}
+        {tab === "devices" && <Devices peers={peers} pairings={pairings} fail={fail} />}
         {tab === "settings" && <Settings fail={fail} />}
       </main>
       {toast && <div className="toast" role="alert">{toast}</div>}
@@ -84,10 +88,11 @@ function Send({ shares, busy, fail }: { shares: Session[]; busy: string; fail: (
 
 function ShareCard({ s }: { s: Session }) {
   const status = s.delivered > 0 ? `delivered ✓${s.delivered > 1 ? ` ×${s.delivered}` : ""}`
+    : s.peer ? (s.peers ? `${s.peer} is deciding…` : `ringing ${s.peer}…`)
     : s.status === "waiting" ? "waiting for someone to join" : s.peers ? `${s.peers} connected` : s.status;
   return (
     <article className="card">
-      <Phrase s={s} />
+      {s.peer ? <p className="phrase to">→ {s.peer}</p> : <Phrase s={s} />}
       <p className="meta"><span>{s.title}</span><span>{s.items > 1 ? `${s.items} items · ` : ""}{size(s.bytes)}</span></p>
       <p className={"status " + (s.delivered > 0 ? "ok" : "")}>{status}</p>
       <div className="actions">
@@ -132,7 +137,8 @@ function Receive({ receives, fail }: { receives: Session[]; fail: (e: unknown) =
         <article className="card" key={r.phrase}>
           <Phrase s={r} />
           {r.status === "waiting" && <p className="gl-hint">Open <b>{r.link}</b> on the other device, or scan the QR.</p>}
-          {(r.offers ?? []).map((o) => <OfferRow key={o.id} o={o} />)}
+          {r.peer && <p className="gl-hint">from your paired device <b>{r.peer}</b></p>}
+          {(r.offers ?? []).map((o) => <OfferRow key={o.id} o={o} phrase={r.phrase} fail={fail} />)}
           <div className="actions"><button className="gl-btn ghost stop" onClick={() => Service.Stop(r.phrase)}>Close</button></div>
         </article>
       ))}
@@ -140,11 +146,17 @@ function Receive({ receives, fail }: { receives: Session[]; fail: (e: unknown) =
   );
 }
 
-function OfferRow({ o }: { o: Offer }) {
+function OfferRow({ o, phrase, fail }: { o: Offer; phrase: string; fail: (e: unknown) => void }) {
   const pct = o.bytes ? Math.min(100, Math.round((o.done / o.bytes) * 100)) : 100;
   return (
     <div className="offer">
       <p className="meta"><span className="name">{o.name}</span><span>{o.items > 1 ? `${o.items} items · ` : ""}{size(o.bytes)}</span></p>
+      {o.status === "offered" && (
+        <div className="actions">
+          <button className="gl-btn primary" onClick={() => Service.Accept(phrase, o.from, o.id).catch(fail)}>Accept</button>
+          <button className="gl-btn ghost" onClick={() => Service.Decline(phrase, o.from, o.id)}>Decline</button>
+        </div>
+      )}
       {o.status === "receiving" && <progress max={100} value={pct} aria-label={"receiving " + o.name} />}
       {o.status === "received" && o.text && (
         <div className="text-preview">
@@ -154,10 +166,68 @@ function OfferRow({ o }: { o: Offer }) {
       )}
       <p className={"status " + (o.status === "received" ? "ok" : o.status === "failed" ? "bad" : "")}>
         {o.status === "received" ? (o.text !== undefined && o.text !== "" ? "on your clipboard ✓" : o.folder ? "saved ✓" : "received ✓")
-          : o.status === "failed" ? "failed: " + o.error : o.status}
+          : o.status === "failed" ? "failed: " + o.error : o.status === "offered" ? "waiting for you" : o.status}
         {o.folder && <button className="linkish" onClick={() => Service.ShowFolder()}>Show in folder</button>}
       </p>
     </div>
+  );
+}
+
+function Devices({ peers, pairings, fail }: { peers: Peer[]; pairings: Pairing[]; fail: (e: unknown) => void }) {
+  const [phrase, setPhrase] = useState("");
+  const [name, setName] = useState("");
+  useEffect(() => { Service.Settings().then((s) => setName(s.deviceName)).catch(fail); }, [fail]);
+  return (
+    <section className="stack">
+      <label className="field">This device is called
+        <span className="row">
+          <input value={name} onChange={(e) => setName(e.target.value)} maxLength={40} aria-label="Device name" />
+          <button className="gl-btn ghost" onClick={() => Service.SetDeviceName(name).catch(fail)}>Save</button>
+        </span>
+      </label>
+
+      <div className="actions">
+        <button className="gl-btn primary" onClick={() => Service.PairStart().catch(fail)}>Pair a new device</button>
+      </div>
+      <div className="row">
+        <input value={phrase} onChange={(e) => setPhrase(e.target.value)} placeholder="…or enter the phrase another device shows"
+          autoCapitalize="none" autoComplete="off" spellCheck={false} aria-label="Pairing phrase"
+          onKeyDown={(e) => e.key === "Enter" && phrase.trim() && Service.PairJoin(phrase).then(() => setPhrase("")).catch(fail)} />
+        <button className="gl-btn ghost" disabled={!phrase.trim()} onClick={() => Service.PairJoin(phrase).then(() => setPhrase("")).catch(fail)}>Join</button>
+      </div>
+
+      {pairings.map((p) => (
+        <article className="card" key={p.phrase}>
+          <p className="phrase">{p.phrase}</p>
+          {(p.candidates ?? []).length === 0
+            ? <p className="gl-hint">Enter this phrase in satchel on the other device, under Devices.</p>
+            : (p.candidates ?? []).map((c) => (
+              <div className="offer" key={c.id}>
+                <p className="meta"><span className="name">{c.name}</span></p>
+                <p className="code">{c.code}</p>
+                <p className="gl-hint">Pair only if the other screen shows the same code.</p>
+                <div className="actions">
+                  <button className="gl-btn primary" onClick={() => Service.PairConfirm(p.phrase, c.id).catch(fail)}>Codes match — pair</button>
+                </div>
+              </div>
+            ))}
+          <div className="actions"><button className="gl-btn ghost stop" onClick={() => Service.PairCancel(p.phrase)}>Cancel</button></div>
+        </article>
+      ))}
+
+      <h3 className="sub">Paired devices</h3>
+      {peers.length === 0 && <p className="gl-hint">None yet. Paired devices can send to each other by name — no phrase each time.</p>}
+      {peers.map((p) => (
+        <article className="card" key={p.id}>
+          <p className="meta"><span className="name">{p.name}</span><span>paired {new Date(p.paired).toLocaleDateString()}</span></p>
+          <div className="actions">
+            <button className="gl-btn ghost" onClick={() => Service.ShareClipboardTo(p.id).catch(fail)}>Send clipboard</button>
+            <button className="gl-btn ghost" onClick={() => Service.PickFilesTo(p.id, false).catch(fail)}>Send files…</button>
+            <button className="gl-btn ghost stop" onClick={() => Service.Unpair(p.id).catch(fail)}>Unpair</button>
+          </div>
+        </article>
+      ))}
+    </section>
   );
 }
 

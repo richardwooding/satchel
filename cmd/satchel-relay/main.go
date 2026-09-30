@@ -20,6 +20,7 @@ import (
 	"github.com/richardwooding/parley/dashboard"
 	"github.com/richardwooding/parley/relay"
 	"github.com/richardwooding/parley/wire"
+	"github.com/richardwooding/satchel/internal/bell"
 	"github.com/richardwooding/satchel/web"
 )
 
@@ -182,6 +183,13 @@ func main() {
 	})
 	defer relaySrv.Close()
 	mux.Handle("/ws", relaySrv)
+
+	// The paired-device wake-up call. It holds rings in memory, so while the
+	// app runs on more than one machine a ring and its listener could land on
+	// different ones — fly.toml keeps it at one.
+	bellSrv := bell.New(bell.Options{TrustFlyClientIP: os.Getenv("FLY_MACHINE_ID") != ""})
+	mux.Handle("/bell", bellSrv)
+	mux.Handle("/bell/", bellSrv)
 
 	mux.HandleFunc("/whoami", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")

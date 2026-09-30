@@ -12,6 +12,29 @@ import (
 type State struct {
 	Shares   []Session `json:"shares"`
 	Receives []Session `json:"receives"`
+	Peers    []Peer    `json:"peers"`
+	Pairings []Pairing `json:"pairings"`
+}
+
+// Peer is a paired device.
+type Peer struct {
+	ID     string    `json:"id"`
+	Name   string    `json:"name"`
+	Paired time.Time `json:"paired"`
+}
+
+// Pairing is an open pairing session and who has introduced themselves.
+type Pairing struct {
+	Phrase     string      `json:"phrase"`
+	Link       string      `json:"link"`
+	Candidates []Candidate `json:"candidates"`
+}
+
+// Candidate is a device waiting to be confirmed by its check code.
+type Candidate struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Code string `json:"code"`
 }
 
 // Session is one open share or receive.
@@ -25,6 +48,7 @@ type Session struct {
 	Done    int       `json:"delivered"`
 	Status  string    `json:"status"`
 	Started time.Time `json:"started"`
+	Peer    string    `json:"peer,omitempty"` // the paired device, if any
 	Offers  []Offer   `json:"offers,omitempty"`
 }
 
@@ -48,11 +72,11 @@ func (d *Desk) State() State {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	// Empty, not nil: a nil slice reaches the frontend as null.
-	st := State{Shares: []Session{}, Receives: []Session{}}
+	st := State{Shares: []Session{}, Receives: []Session{}, Peers: []Peer{}, Pairings: []Pairing{}}
 	for phrase, ss := range d.sessions {
 		v := Session{
 			Phrase: phrase, Link: d.Link(phrase), Title: ss.title, Items: ss.items, Bytes: ss.bytes,
-			Peers: ss.peers, Done: ss.done, Status: ss.status, Started: ss.started,
+			Peers: ss.peers, Done: ss.done, Status: ss.status, Started: ss.started, Peer: ss.peer,
 		}
 		for _, o := range ss.offers {
 			v.Offers = append(v.Offers, Offer{
@@ -65,6 +89,18 @@ func (d *Desk) State() State {
 			st.Shares = append(st.Shares, v)
 		} else {
 			st.Receives = append(st.Receives, v)
+		}
+	}
+	for phrase, p := range d.pairings {
+		v := Pairing{Phrase: phrase, Link: d.Link(phrase), Candidates: []Candidate{}}
+		for _, c := range p.candidates {
+			v.Candidates = append(v.Candidates, Candidate{ID: c.Peer.ID, Name: c.Peer.Name, Code: c.Code})
+		}
+		st.Pairings = append(st.Pairings, v)
+	}
+	if d.cfg.Pairs != nil {
+		for _, p := range d.cfg.Pairs.Peers() {
+			st.Peers = append(st.Peers, Peer{ID: p.ID, Name: p.Name, Paired: p.Paired})
 		}
 	}
 	newest := func(a, b Session) int { return b.Started.Compare(a.Started) }

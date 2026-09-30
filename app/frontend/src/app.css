@@ -112,3 +112,7 @@ input:focus-visible, textarea:focus-visible, button:focus-visible { outline: 2px
   padding: 0.6rem 0.8rem;
   color: var(--gl-amber);
 }
+
+.code { margin: 0; font-family: var(--gl-mono); font-size: 1.6rem; letter-spacing: 0.08em; color: var(--gl-fg); }
+.phrase.to { font-family: var(--gl-sans); font-size: 1.1rem; }
+.sub { margin: 0.6rem 0 0; font-size: 0.9rem; color: var(--gl-muted); font-weight: 600; }

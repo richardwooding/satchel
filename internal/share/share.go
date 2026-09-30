@@ -45,37 +45,38 @@ type Session struct {
 	done      chan struct{}
 }
 
-// Host opens a new session and returns it with its fresh phrase.
-func Host(ctx context.Context, relayURL string) (*Session, error) {
+// Host opens a new session and returns it with its fresh phrase. extra
+// services run alongside xfer — pairing adds its own.
+func Host(ctx context.Context, relayURL string, extra ...service.Service) (*Session, error) {
 	c, phrase, err := session.Host(ctx, relayURL, proto.Options()...)
 	if err != nil {
 		return nil, friendly(err)
 	}
-	return start(c, phrase), nil
+	return start(c, phrase, extra), nil
 }
 
 // HostPhrase opens a session under a phrase the caller chose — paired devices
 // meet on a phrase both derive from their shared secret.
-func HostPhrase(ctx context.Context, relayURL, phrase string) (*Session, error) {
+func HostPhrase(ctx context.Context, relayURL, phrase string, extra ...service.Service) (*Session, error) {
 	c, err := session.HostWithPhrase(ctx, relayURL, phrase, proto.Options()...)
 	if err != nil {
 		return nil, friendly(err)
 	}
-	return start(c, phrase), nil
+	return start(c, phrase, extra), nil
 }
 
 // Join enters an existing session by phrase.
-func Join(ctx context.Context, relayURL, phrase string) (*Session, error) {
+func Join(ctx context.Context, relayURL, phrase string, extra ...service.Service) (*Session, error) {
 	c, err := session.Join(ctx, relayURL, phrase, proto.Options()...)
 	if err != nil {
 		return nil, friendly(err)
 	}
-	return start(c, phrase), nil
+	return start(c, phrase, extra), nil
 }
 
-func start(c *session.Client, phrase string) *Session {
+func start(c *session.Client, phrase string, extra []service.Service) *Session {
 	x := xfer.New()
-	mux := service.NewMux(c, service.WithServices(x))
+	mux := service.NewMux(c, service.WithServices(append([]service.Service{x}, extra...)...))
 	mux.SetReconnectable()
 	return &Session{X: x, phrase: phrase, client: c, mux: mux, done: make(chan struct{})}
 }

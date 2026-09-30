@@ -26,6 +26,7 @@ import (
 
 	"github.com/richardwooding/satchel/internal/clip"
 	"github.com/richardwooding/satchel/internal/manifest"
+	"github.com/richardwooding/satchel/internal/pair"
 	"github.com/richardwooding/satchel/internal/share"
 	"github.com/richardwooding/satchel/internal/sink"
 	"github.com/richardwooding/satchel/internal/source"
@@ -52,10 +53,14 @@ type Clipboard interface {
 
 // Note is something worth a desktop notification.
 type Note struct {
-	Kind   string // "share-ready", "received", "failed"
+	Kind   string // "share-ready", "received", "failed", "offer", "paired"
 	Title  string
 	Body   string
 	Folder string // for "received": where the files are, if any
+	// For "offer": what Accept or Decline needs.
+	Phrase  string
+	From    uint32
+	OfferID string
 }
 
 // Config wires desk to the outside world. Changed and Notify may be called
@@ -66,6 +71,9 @@ type Config struct {
 	Clipboard Clipboard
 	Changed   func(State)
 	Notify    func(Note)
+	// Pairs enables paired devices; nil turns them off.
+	Pairs      *pair.Store
+	DeviceName string
 }
 
 // Desk runs every session the tray app has open.
@@ -74,7 +82,9 @@ type Desk struct {
 
 	mu       sync.Mutex
 	sessions map[string]*sess // by phrase
+	pairings map[string]*pairing
 	closed   bool
+	bellStop func()
 }
 
 type role int
@@ -97,6 +107,8 @@ type sess struct {
 	offers  []*offer
 	files   *source.Files
 	timer   *time.Timer
+	peer    string // a paired device's name, for sessions with one
+	ask     bool   // offers wait for Accept: they came from a paired device
 }
 
 type offer struct {
@@ -123,7 +135,7 @@ func New(cfg Config) *Desk {
 	if cfg.Notify == nil {
 		cfg.Notify = func(Note) {}
 	}
-	return &Desk{cfg: cfg, sessions: map[string]*sess{}}
+	return &Desk{cfg: cfg, sessions: map[string]*sess{}, pairings: map[string]*pairing{}}
 }
 
 // Link is the browser URL for a phrase on this relay.
@@ -180,7 +192,19 @@ func (d *Desk) ShareFiles(ctx context.Context, paths []string, progress source.P
 }
 
 func (d *Desk) share(ctx context.Context, title string, m manifest.Manifest, src xfer.Source, files *source.Files) (string, error) {
-	s, err := share.Host(ctx, d.cfg.RelayURL)
+	return d.shareVia(ctx, nil, title, m, src, files)
+}
+
+// shareVia hosts an offer: on a fresh phrase, or — with to set — on a
+// rendezvous with a paired device, which is then rung.
+func (d *Desk) shareVia(ctx context.Context, to *pair.Peer, title string, m manifest.Manifest, src xfer.Source, files *source.Files) (string, error) {
+	var s *share.Session
+	var err error
+	if to == nil {
+		s, err = share.Host(ctx, d.cfg.RelayURL)
+	} else {
+		s, err = d.hostFor(ctx, *to)
+	}
 	if err != nil {
 		return "", err
 	}
@@ -190,8 +214,14 @@ func (d *Desk) share(ctx context.Context, title string, m manifest.Manifest, src
 	}
 	ss := &sess{s: s, role: roleShare, title: title, items: len(m.Items), bytes: m.Total(),
 		started: time.Now(), status: "waiting", files: files}
+	if to != nil {
+		ss.peer = to.Name
+		ss.status = "ringing"
+	}
 	d.adopt(ss)
-	d.cfg.Notify(Note{Kind: "share-ready", Title: "Ready: " + s.Phrase(), Body: title + " · " + human(m.Total())})
+	if to == nil {
+		d.cfg.Notify(Note{Kind: "share-ready", Title: "Ready: " + s.Phrase(), Body: title + " · " + human(m.Total())})
+	}
 	return s.Phrase(), nil
 }
 
@@ -238,11 +268,17 @@ func (d *Desk) Stop(phrase string) {
 func (d *Desk) Close() {
 	d.mu.Lock()
 	d.closed = true
-	all := d.sessions
-	d.sessions = map[string]*sess{}
+	all, pairings, stop := d.sessions, d.pairings, d.bellStop
+	d.sessions, d.pairings, d.bellStop = map[string]*sess{}, map[string]*pairing{}, nil
 	d.mu.Unlock()
+	if stop != nil {
+		stop()
+	}
 	for _, ss := range all {
 		ss.close()
+	}
+	for _, p := range pairings {
+		p.s.Close()
 	}
 }
 
@@ -340,9 +376,23 @@ func (d *Desk) offered(ss *sess, e xfer.Offered) func() {
 	o := &offer{from: e.From, id: e.ID, sum: e.Summary, status: "receiving"}
 	ss.offers = append(ss.offers, o)
 	ss.title = e.Summary.Name
+	if ss.ask {
+		o.status = "offered"
+		ss.status = "offered"
+		n := Note{Kind: "offer", Title: ss.peer + " wants to send " + e.Summary.Name,
+			Body: describe(e.Summary), Phrase: ss.s.Phrase(), From: uint32(e.From), OfferID: e.ID.String()}
+		return func() { d.cfg.Notify(n) }
+	}
 	ss.status = "receiving"
+	return d.accept(ss, o)
+}
+
+// accept starts pulling an offer into the right sink. Called with mu held;
+// the returned func runs after it is released.
+func (d *Desk) accept(ss *sess, o *offer) func() {
+	o.status = "receiving"
 	var snk sink.Sink
-	if clipboardKind(e.Summary) {
+	if clipboardKind(o.sum) {
 		o.mem = sink.NewMemory(memoryMax)
 		snk = o.mem
 	} else {
@@ -358,7 +408,7 @@ func (d *Desk) offered(ss *sess, e xfer.Offered) func() {
 	// must not run on the goroutine draining that stream.
 	return func() {
 		go func() {
-			if err := x.Accept(e.From, e.ID, snk, manifest.Default); err != nil {
+			if err := x.Accept(o.from, o.id, snk, manifest.Default); err != nil {
 				d.mu.Lock()
 				o.status, o.err = "failed", err.Error()
 				d.mu.Unlock()

@@ -17,6 +17,8 @@ import (
 type Settings struct {
 	Relay     string `json:"relay"`
 	Downloads string `json:"downloads"`
+	// DeviceName is what paired devices see this one as.
+	DeviceName string `json:"deviceName"`
 }
 
 func settingsPath() (string, error) {
@@ -28,7 +30,7 @@ func settingsPath() (string, error) {
 }
 
 func loadSettings() Settings {
-	s := Settings{Relay: desk.DefaultRelay, Downloads: defaultDownloads()}
+	s := Settings{Relay: desk.DefaultRelay, Downloads: defaultDownloads(), DeviceName: defaultDeviceName()}
 	p, err := settingsPath()
 	if err != nil {
 		return s
@@ -51,6 +53,9 @@ func loadSettings() Settings {
 	}
 	if saved.Downloads != "" {
 		s.Downloads = saved.Downloads
+	}
+	if saved.DeviceName != "" {
+		s.DeviceName = saved.DeviceName
 	}
 	return s
 }
@@ -83,4 +88,11 @@ func defaultDownloads() string {
 		return "satchel"
 	}
 	return filepath.Join(home, "Downloads", "satchel")
+}
+
+func defaultDeviceName() string {
+	if h, err := os.Hostname(); err == nil && h != "" {
+		return strings.TrimSuffix(h, ".localdomain")
+	}
+	return "desktop"
 }
