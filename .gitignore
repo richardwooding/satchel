@@ -1,0 +1,9 @@
+/satchel-server
+web/dist/*
+!web/dist/.gitkeep
+app/bin/
+app/frontend/node_modules/
+app/frontend/dist/
+*.test
+*.out
+/dist/
