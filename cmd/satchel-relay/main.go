@@ -16,11 +16,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/richardwooding/satchel/web"
 	"github.com/richardwooding/flyaffinity"
 	"github.com/richardwooding/parley/dashboard"
 	"github.com/richardwooding/parley/relay"
 	"github.com/richardwooding/parley/wire"
+	"github.com/richardwooding/satchel/web"
 )
 
 // clusterToken derives the internal peer-stats auth token from the dashboard

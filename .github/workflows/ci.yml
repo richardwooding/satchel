@@ -3,6 +3,12 @@ on:
   push:
     branches: [main]
   pull_request:
+
+# app/ is a cgo package (Wails v3: GTK4 + WebKitGTK 6), so anything that
+# compiles ./... needs those headers, not just the app build.
+env:
+  APP_DEPS: libgtk-4-dev libwebkitgtk-6.0-dev pkg-config
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -11,6 +17,7 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends $APP_DEPS
       - run: go build ./...
       - run: go test -race -timeout 600s ./...
       - name: go fix (check)
@@ -20,6 +27,24 @@ jobs:
         run: GOOS=js GOARCH=wasm go build -o /dev/null ./cmd/satchel-wasm ./internal/...
       - name: Full web build
         run: make wasm && go build ./cmd/satchel-relay
+
+  app:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends $APP_DEPS
+      - name: Install wails3
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.26
+      - name: Build the tray app (bindings, frontend, binary)
+        working-directory: app
+        run: wails3 task build
+      - run: test -x app/bin/satchel
 
   complexity:
     if: github.event_name == 'pull_request'
@@ -39,6 +64,7 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends $APP_DEPS
       - uses: golangci/golangci-lint-action@v9
         with:
           version: latest

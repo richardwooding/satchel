@@ -3,7 +3,11 @@ web/dist/*
 !web/dist/.gitkeep
 app/bin/
 app/frontend/node_modules/
-app/frontend/dist/
+app/frontend/dist/*
+!app/frontend/dist/.gitkeep
 *.test
 *.out
 /dist/
+app/frontend/bindings/
+app/build/linux/appimage/build/
+app/.task/
