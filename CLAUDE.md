@@ -61,7 +61,8 @@ Run `go fix -diff` and `golangci-lint run` before every push.
 server, 8 members per session). `make wasm` builds the page; `make serve`
 runs it on :8080. Unlike confab, **every shared byte crosses the relay** —
 bandwidth is the cost to watch. Tag push → goreleaser → ghcr image;
-`fly deploy --image ghcr.io/richardwooding/satchel:X.Y.Z`. One machine until
+`fly deploy --image ghcr.io/richardwooding/satchel:X.Y.Z` (Fly app
+`satchel-send`; "satchel" was taken). One machine until
 /bell routes by affinity.
 
 ## Desktop app (Wails v3, `app/`)

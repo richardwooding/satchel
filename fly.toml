@@ -1,7 +1,7 @@
 # satchel's relay holds live sessions in memory, so auto-stop would cut
 # transfers mid-flight. Unlike confab, every shared byte passes through this
 # server (end-to-end encrypted), so bandwidth — not CPU — is what it costs.
-app = "satchel"
+app = "satchel-send"
 primary_region = "jnb"
 
 [build]
