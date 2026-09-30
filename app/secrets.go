@@ -37,6 +37,10 @@ func (keyringSecrets) Set(name string, value []byte) error {
 // keyring when one answers and in a 0600 file beside the peers when not.
 func openPairs(configDir string) (*pair.Store, error) {
 	dir := filepath.Join(configDir, "satchel")
+	if profileSuffix("") != "" {
+		// A test profile never writes into the person's real keyring.
+		return pair.Open(dir, pair.FileSecrets(filepath.Join(dir, "secrets")))
+	}
 	var secrets pair.Secrets = keyringSecrets{}
 	if _, err := secrets.Get("identity"); err != nil && !errors.Is(err, pair.ErrNoSecret) {
 		log.Printf("keyring unavailable (%v); keeping the device key in %s instead", err, dir)
