@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"os"
 	"testing"
+	"time"
 )
 
 // These tests replace the real clipboard, so they run only when asked:
@@ -78,5 +79,25 @@ func TestFallbackIsTextOnly(t *testing.T) {
 	_ = c.WriteText("there")
 	if f.s != "there" {
 		t.Fatal("fallback write lost")
+	}
+}
+
+type hangingText struct{}
+
+func (hangingText) Text() (string, bool) { select {} }
+func (hangingText) SetText(string) bool  { return false }
+
+// A fallback that never answers must not hang a share.
+func TestFallbackReadTimesOut(t *testing.T) {
+	old := fallbackTimeout
+	fallbackTimeout = 50 * time.Millisecond
+	t.Cleanup(func() { fallbackTimeout = old })
+	c := &Clipboard{fallback: hangingText{}}
+	start := time.Now()
+	if _, err := c.Read(); err == nil {
+		t.Fatal("hung fallback reported success")
+	}
+	if time.Since(start) > time.Second {
+		t.Fatal("read waited for the hung fallback")
 	}
 }

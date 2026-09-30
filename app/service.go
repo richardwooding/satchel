@@ -11,6 +11,7 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/services/notifications"
 
+	"github.com/richardwooding/satchel/internal/clip"
 	"github.com/richardwooding/satchel/internal/desk"
 )
 
@@ -21,6 +22,7 @@ type Service struct {
 	window   *application.WebviewWindow
 	notes    *notifications.NotificationService
 	desk     *desk.Desk
+	clip     *clip.Clipboard
 	settings Settings
 
 	mu       sync.Mutex
@@ -104,7 +106,7 @@ func (s *Service) shareThen(start func(context.Context) (string, error)) error {
 	}
 	// The link is what gets pasted into a chat, so it goes on the clipboard.
 	// Whatever was being shared is already captured in the offer.
-	s.app.Clipboard.SetText(s.desk.Link(phrase))
+	s.Copy(s.desk.Link(phrase))
 	s.showWindow("send")
 	return nil
 }
@@ -126,8 +128,13 @@ func (s *Service) Open() (string, error) {
 // Stop closes a share or receive.
 func (s *Service) Stop(phrase string) { s.desk.Stop(phrase) }
 
-// Copy puts text on the clipboard.
-func (s *Service) Copy(text string) { s.app.Clipboard.SetText(text) }
+// Copy puts text on the clipboard, through wl-copy where there is one: GTK's
+// clipboard needs a focused window on Wayland, and a tray app has none.
+func (s *Service) Copy(text string) {
+	if err := s.clip.WriteText(text); err != nil {
+		s.app.Clipboard.SetText(text)
+	}
+}
 
 // QR renders a link as a PNG data URL.
 func (s *Service) QR(link string) string {

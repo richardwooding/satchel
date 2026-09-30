@@ -78,7 +78,23 @@ Measured on GNOME Wayland (Bluefin) with Wails v3.0.0-beta.26:
 - Builds need gtk4-devel + webkitgtk6.0-devel: on Bluefin use the
   `satchel-dev` distrobox with `GOTOOLCHAIN=go1.27.1`.
 - Clipboard images on Wayland go through `wl-copy`/`wl-paste`; Wails'
-  clipboard is text only.
+  clipboard is text only. **All clipboard reads and writes go through
+  internal/clip**, not `app.Clipboard`: on Wayland only a focused window may
+  use GTK's clipboard, a tray app usually has none, and the read blocked
+  forever. The fallback now times out. wl-clipboard is a runtime dependency
+  (it is not in the distrobox by default: `sudo dnf install wl-clipboard`).
+- GNOME's AppIndicator extension **drops a tray item with no Menu
+  property** (journal: "PropertyNotFound … _checkNeededProperties"), so the
+  first menu is built before Run. The tray *label* becomes the item's Id and
+  Title (default "Wails") and must be set before Run. `SetTooltip` is a
+  no-op on Linux in beta.26 — the green dot on the icon is the only "open"
+  signal. Extensions go INACTIVE while the screen is locked; Wails
+  re-registers when the watcher returns (seen working).
+- Test the tray headlessly over D-Bus: `dbusmenu.GetLayout` lists items,
+  `dbusmenu.Event <id> clicked` clicks one, `StatusNotifierItem.Activate`
+  is a left-click. Look IDs up by label each time.
+- Run the app with `XDG_CONFIG_HOME=<tmp>` and a settings.json pointing
+  downloads at a temp dir when testing, so nothing lands in ~/Downloads.
 
 ## Releasing
 

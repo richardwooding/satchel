@@ -78,10 +78,11 @@ func main() {
 		svc.shareDropped(e.Context().DroppedFiles())
 	})
 
+	svc.clip = clip.New(wailsText{app})
 	svc.desk = desk.New(desk.Config{
 		RelayURL:  cfg.Relay,
 		Downloads: cfg.Downloads,
-		Clipboard: clip.New(wailsText{app}),
+		Clipboard: svc.clip,
 		Changed:   svc.changed,
 		Notify:    svc.notify,
 	})

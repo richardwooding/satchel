@@ -41,8 +41,10 @@ type Clipboard struct {
 	fallback TextFallback
 }
 
-// ErrUnavailable means the clipboard could not be read or written.
-var ErrUnavailable = errors.New("clip: clipboard unavailable")
+// ErrUnavailable means the clipboard could not be read or written. Without
+// wl-clipboard on Wayland that is expected whenever satchel's window is not
+// focused, so the message says what to install.
+var ErrUnavailable = errors.New("clipboard unavailable — install wl-clipboard (Wayland) or xclip (X11)")
 
 type backend interface {
 	types(ctx context.Context) ([]string, error)
@@ -121,12 +123,32 @@ func (c *Clipboard) WritePNG(png []byte) error {
 	return c.tool.write(ctx, "image/png", png)
 }
 
+// fallbackText reads through the text-only fallback, giving up after a few
+// seconds. The GTK clipboard can block indefinitely: on Wayland only a
+// focused window may read the selection, and a tray app usually has none.
 func (c *Clipboard) fallbackText() (string, bool) {
 	if c.fallback == nil {
 		return "", false
 	}
-	return c.fallback.Text()
+	type result struct {
+		s  string
+		ok bool
+	}
+	ch := make(chan result, 1)
+	go func() {
+		s, ok := c.fallback.Text()
+		ch <- result{s, ok}
+	}()
+	select {
+	case r := <-ch:
+		return r.s, r.ok
+	case <-time.After(fallbackTimeout):
+		return "", false
+	}
 }
+
+// fallbackTimeout bounds a read through the text-only fallback.
+var fallbackTimeout = 3 * time.Second
 
 func have(bin string) bool {
 	_, err := exec.LookPath(bin)
