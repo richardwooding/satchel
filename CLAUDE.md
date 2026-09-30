@@ -46,7 +46,23 @@ Run `go fix -diff` and `golangci-lint run` before every push.
 - Handlers in xfer decide under `mu` and act after releasing it (`effects`):
   never write to the network or call Emit with `mu` held.
 - **Zero `syscall/js` outside `cmd/satchel-wasm`.** internal/* compiles
-  natively and to wasm; internal/sink/dir.go is `!js`.
+  natively and to wasm; internal/sink/dir.go is `!js`. internal/share is
+  the session lifecycle (host/join, reconnect backoff sized to the relay's
+  30s grace and 5/min per-IP limit, friendly errors) for every surface.
+- **Browser bridge**: exactly two functions, `satchel_send(json, files?)`
+  and `satchelOnEvent(json, bytes?)`. JSON for commands and events; the
+  optional second argument carries File objects in and received bytes out,
+  so file data is never base64'd through JSON. The page writes every
+  peer-supplied string with textContent, never innerHTML.
+
+## Relay and deploy
+
+`cmd/satchel-relay` serves web/dist at / and the relay at /ws (confab's
+server, 8 members per session). `make wasm` builds the page; `make serve`
+runs it on :8080. Unlike confab, **every shared byte crosses the relay** —
+bandwidth is the cost to watch. Tag push → goreleaser → ghcr image;
+`fly deploy --image ghcr.io/richardwooding/satchel:X.Y.Z`. One machine until
+/bell routes by affinity.
 
 ## Desktop app (Wails v3, `app/`)
 

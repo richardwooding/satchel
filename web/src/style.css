@@ -1,0 +1,132 @@
+/* satchel page styles — gloam idiom: tokens only, one purple accent,
+   dark-first. gloam.css provides the base; this file is the app chrome. */
+
+.view.hidden { display: none !important; }
+[hidden] { display: none !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* ---- home ---- */
+.home-card {
+  margin-top: 1.4rem;
+  background: var(--gl-panel);
+  border: 1px solid var(--gl-border);
+  border-radius: var(--gl-radius);
+  padding: 1.1rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  max-width: 28rem;
+}
+.home-card label { font-size: 0.85rem; color: var(--gl-muted); }
+.row { display: flex; gap: 0.5rem; }
+.row input { flex: 1; min-width: 0; }
+input[type="text"], textarea {
+  background: var(--gl-panel-2);
+  border: 1px solid var(--gl-border);
+  border-radius: 10px;
+  color: var(--gl-fg);
+  padding: 0.55rem 0.7rem;
+  font: inherit;
+}
+#join-phrase { font-family: var(--gl-mono); }
+input:focus-visible, textarea:focus-visible, .drop:focus-visible {
+  outline: 2px solid var(--gl-accent);
+  outline-offset: 1px;
+}
+.or { display: flex; align-items: center; gap: 0.6rem; color: var(--gl-faint); font-size: 0.8rem; }
+.or::before, .or::after { content: ""; flex: 1; border-top: 1px solid var(--gl-border); }
+.home-foot { text-align: center; padding: 1rem 0 2rem; }
+.home-foot a { color: var(--gl-muted); }
+
+/* ---- session ---- */
+.session { padding: 1.5rem 1rem 3rem; }
+.session-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  align-items: center;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--gl-border);
+}
+.session-head > div:first-child { flex: 1; min-width: 14rem; }
+.phrase {
+  font-family: var(--gl-mono);
+  font-size: clamp(1.4rem, 5vw, 2rem);
+  color: var(--gl-accent-2);
+  margin: 0.1rem 0;
+  overflow-wrap: anywhere;
+}
+.invite { display: flex; gap: 0.8rem; align-items: center; }
+.invite img { border-radius: 8px; background: #fff; padding: 4px; }
+.invite-actions { display: flex; flex-direction: column; gap: 0.4rem; }
+.leave { align-self: flex-start; }
+
+.panes { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-top: 1.2rem; }
+@media (max-width: 760px) { .panes { grid-template-columns: 1fr; } }
+.pane {
+  background: var(--gl-panel);
+  border: 1px solid var(--gl-border);
+  border-radius: var(--gl-radius);
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  min-width: 0;
+}
+.pane h2 { margin: 0; font-size: 1rem; }
+.drop {
+  border: 1.5px dashed var(--gl-border);
+  border-radius: 12px;
+  padding: 1rem;
+  text-align: center;
+  color: var(--gl-muted);
+}
+.drop.over { border-color: var(--gl-accent); background: var(--gl-panel-2); }
+.drop p { margin: 0 0 0.6rem; }
+.pick { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; }
+textarea { resize: vertical; min-height: 4rem; }
+
+.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.6rem; }
+.item {
+  background: var(--gl-panel-2);
+  border: 1px solid var(--gl-border);
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 0;
+}
+.item-head { display: flex; gap: 0.5rem; align-items: baseline; min-width: 0; }
+.item-kind { color: var(--gl-accent); }
+.item-name { font-family: var(--gl-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.item-meta { margin-left: auto; white-space: nowrap; }
+.item-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.item progress { width: 100%; accent-color: var(--gl-accent); }
+.received { display: flex; flex-direction: column; gap: 0.4rem; align-items: flex-start; }
+.received img { max-width: 100%; max-height: 18rem; border-radius: 8px; }
+.received .text {
+  margin: 0;
+  width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: var(--gl-mono);
+  font-size: 0.85rem;
+  max-height: 14rem;
+  overflow: auto;
+}
+
+/* ---- overlays ---- */
+.toast, .reconnect {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--gl-panel);
+  border: 1px solid var(--gl-border);
+  border-radius: 10px;
+  padding: 0.6rem 1rem;
+  max-width: calc(100% - 2rem);
+  z-index: 10;
+}
+.toast { bottom: 1.2rem; }
+.reconnect { top: 1rem; color: var(--gl-amber); }
