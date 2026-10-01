@@ -131,6 +131,14 @@ func (s *Service) buildMenu(st desk.State) *application.Menu {
 // sessionItem adds one open session as a submenu: copy its link, or stop it.
 func (s *Service) sessionItem(m *application.Menu, arrow string, x desk.Session) {
 	phrase, link := x.Phrase, x.Link
+	// A paired session's phrase is a 128-bit rendezvous nobody needs to see
+	// or share: name the device instead, and offer no phrase or link.
+	if x.Peer != "" {
+		dir := map[string]string{"↑": "to", "↓": "from"}[arrow]
+		sub := m.AddSubmenu(fmt.Sprintf("%s %s %s — %s", arrow, dir, x.Peer, statusLabel(x)))
+		sub.Add("Stop").OnClick(func(*application.Context) { go s.Stop(phrase) })
+		return
+	}
 	sub := m.AddSubmenu(fmt.Sprintf("%s %s — %s", arrow, phrase, statusLabel(x)))
 	sub.Add("Copy link").OnClick(func(*application.Context) { s.Copy(link) })
 	sub.Add("Copy phrase").OnClick(func(*application.Context) { s.Copy(phrase) })
@@ -143,6 +151,8 @@ func statusLabel(x desk.Session) string {
 		return x.Title + " · delivered"
 	case x.Status == "waiting":
 		return x.Title + " · waiting"
+	case x.Status == "offered":
+		return x.Title + " · waiting for you"
 	}
 	return x.Title
 }
