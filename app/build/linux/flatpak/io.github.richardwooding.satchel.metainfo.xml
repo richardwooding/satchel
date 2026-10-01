@@ -33,6 +33,11 @@
     <control>keyboard</control>
   </supports>
   <releases>
+    <release version="0.4.1" date="2026-10-01">
+      <description>
+        <p>The Flatpak now builds offline from vendored Go and npm sources, as Flathub requires.</p>
+      </description>
+    </release>
     <release version="0.4.0" date="2026-10-01">
       <description>
         <p>First Flatpak release, replacing the AppImage.</p>
