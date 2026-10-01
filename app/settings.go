@@ -19,6 +19,9 @@ type Settings struct {
 	Downloads string `json:"downloads"`
 	// DeviceName is what paired devices see this one as.
 	DeviceName string `json:"deviceName"`
+	// Autostart records the Background portal's last answer (Flatpak only:
+	// the portal cannot be asked what it currently allows).
+	Autostart bool `json:"autostart,omitempty"`
 }
 
 func settingsPath() (string, error) {
@@ -57,6 +60,7 @@ func loadSettings() Settings {
 	if saved.DeviceName != "" {
 		s.DeviceName = saved.DeviceName
 	}
+	s.Autostart = saved.Autostart
 	return s
 }
 

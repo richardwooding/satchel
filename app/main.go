@@ -26,6 +26,12 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
+// appID names satchel everywhere the desktop needs one name: the GTK
+// application and Wayland app_id (which GNOME uses to match a window to its
+// .desktop file), the single-instance bus name, the .desktop file, the icon,
+// and the Flatpak. Flathub wants io.github.* for GitHub-hosted apps.
+const appID = "io.github.richardwooding.satchel"
+
 // version is stamped at release with -ldflags "-X main.version=...".
 var version = "dev"
 
@@ -44,11 +50,12 @@ func main() {
 		Assets: application.AssetOptions{Handler: application.AssetFileServerFS(assets)},
 		Linux: application.LinuxOptions{
 			DisableQuitOnLastWindowClosed: true,
-			ProgramName:                   "satchel",
+			// The program name, and so the Wayland app_id, inherits this.
+			ApplicationID: appID + profileSuffix("_"),
 		},
 		Mac: application.MacOptions{ActivationPolicy: application.ActivationPolicyAccessory},
 		SingleInstance: &application.SingleInstanceOptions{
-			UniqueID: "com.github.richardwooding.satchel" + profileSuffix("."),
+			UniqueID: appID + profileSuffix("."),
 			OnSecondInstanceLaunch: func(d application.SecondInstanceData) {
 				if !svc.handleArgs(d.Args) {
 					svc.showWindow("")

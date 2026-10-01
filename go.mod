@@ -4,6 +4,7 @@ go 1.27.0
 
 require (
 	github.com/andybalholm/brotli v1.2.6
+	github.com/godbus/dbus/v5 v5.2.2
 	github.com/richardwooding/flyaffinity v0.1.3
 	github.com/richardwooding/parley v0.6.4
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
@@ -21,7 +22,6 @@ require (
 	github.com/danieljoos/wincred v1.2.3 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.4 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
-	github.com/godbus/dbus/v5 v5.2.2 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/schollz/pake/v3 v3.2.0 // indirect

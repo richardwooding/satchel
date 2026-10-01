@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.richardwooding.satchel</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>satchel</name>
+  <summary>Share the clipboard and files by code phrase</summary>
+  <developer id="io.github.richardwooding">
+    <name>Richard Wooding</name>
+  </developer>
+  <description>
+    <p>
+      Croc-style sharing from your system tray. Share the clipboard — text or
+      an image — or files and whole folders, and send the link it copies for
+      you. The other side opens it in a browser, or types the code phrase into
+      their satchel, and it arrives end-to-end encrypted through a relay that
+      cannot read it.
+    </p>
+    <ul>
+      <li>Anyone can receive in a browser, with nothing installed</li>
+      <li>Pair a device once, then send to it by name; it is always asked first</li>
+      <li>Received files never overwrite, and every item's SHA-256 is checked</li>
+      <li>Start a video call with confab, and invite a paired device to it</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">io.github.richardwooding.satchel.desktop</launchable>
+  <url type="homepage">https://github.com/richardwooding/satchel</url>
+  <url type="bugtracker">https://github.com/richardwooding/satchel/issues</url>
+  <url type="vcs-browser">https://github.com/richardwooding/satchel</url>
+  <content_rating type="oars-1.1"/>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+  <releases>
+    <release version="0.4.0" date="2026-10-01">
+      <description>
+        <p>First Flatpak release, replacing the AppImage.</p>
+      </description>
+    </release>
+  </releases>
+</component>

@@ -13,3 +13,8 @@ app/build/linux/appimage/build/
 app/.task/
 app/build/linux/appimage/satchel
 app/build/linux/appimage/satchel.png
+app/build/linux/flatpak/build/
+app/build/linux/flatpak/repo/
+app/build/linux/flatpak/.flatpak-builder/
+app/build/linux/flatpak/VERSION
+*.flatpak

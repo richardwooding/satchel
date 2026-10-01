@@ -1,0 +1,83 @@
+# satchel as a Flatpak. The GNOME runtime carries GTK4 and WebKitGTK 6, which
+# is what an AppImage cannot do portably: WebKitGTK spawns its helper
+# processes from a path compiled into the library.
+#
+# Built inside the GNOME SDK, not repackaged: a binary linked on a host with a
+# newer glibc than the runtime's would not load in the sandbox.
+#
+#   flatpak-builder --user --install-deps-from=flathub --force-clean \
+#     --repo=repo build app/build/linux/flatpak/io.github.richardwooding.satchel.yml
+#
+# The satchel module fetches Go modules, the wails3 CLI and npm packages
+# during the build (build-args --share=network). That suits a release bundle
+# built in CI; Flathub would want them vendored as sources first.
+id: io.github.richardwooding.satchel
+runtime: org.gnome.Platform
+runtime-version: "51"
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.golang
+  - org.freedesktop.Sdk.Extension.node24
+command: satchel
+
+finish-args:
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+  - --device=dri
+  # The relay and the paired-device bell.
+  - --share=network
+  # The tray icon (StatusNotifierItem) and its menu.
+  - --talk-name=org.kde.StatusNotifierWatcher
+  # Desktop notifications with Accept / Decline / Show in folder buttons.
+  - --talk-name=org.freedesktop.Notifications
+  # The device's pairing key lives in the keyring (Secret Service).
+  - --talk-name=org.freedesktop.secrets
+  # Received files go here; any other folder is chosen through the portal.
+  - --filesystem=xdg-download/satchel:create
+
+modules:
+  # Wayland gives the clipboard only to a focused window, and a tray app
+  # usually has none; wl-copy/wl-paste get around that, and carry images.
+  - name: wl-clipboard
+    buildsystem: meson
+    config-opts:
+      - -Dzshcompletiondir=no
+      - -Dfishcompletiondir=no
+    cleanup:
+      - /share/man
+    sources:
+      - type: archive
+        url: https://github.com/bugaevc/wl-clipboard/archive/refs/tags/v2.2.1.tar.gz
+        sha256: 6eb8081207fb5581d1d82c4bcd9587205a31a3d47bea3ebeb7f41aa1143783eb
+
+  - name: satchel
+    buildsystem: simple
+    build-options:
+      append-path: /usr/lib/sdk/golang/bin:/usr/lib/sdk/node24/bin
+      build-args:
+        - --share=network
+      env:
+        GOPATH: /run/build/satchel/go
+        GOFLAGS: -modcacherw
+        GOTOOLCHAIN: auto
+        CGO_ENABLED: "1"
+    build-commands:
+      - go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.26
+      # VERSION is written by the release job; a local build says "dev".
+      - cd app && "$GOPATH/bin/wails3" task build VERSION="$(cat build/linux/flatpak/VERSION 2>/dev/null || echo dev)"
+      - install -Dm755 app/bin/satchel /app/bin/satchel
+      - install -Dm644 app/build/linux/satchel-256.png /app/share/icons/hicolor/256x256/apps/io.github.richardwooding.satchel.png
+      - install -Dm644 app/build/linux/satchel-512.png /app/share/icons/hicolor/512x512/apps/io.github.richardwooding.satchel.png
+      - install -Dm644 app/build/linux/flatpak/io.github.richardwooding.satchel.desktop /app/share/applications/io.github.richardwooding.satchel.desktop
+      - install -Dm644 app/build/linux/flatpak/io.github.richardwooding.satchel.metainfo.xml /app/share/metainfo/io.github.richardwooding.satchel.metainfo.xml
+    sources:
+      - type: dir
+        path: ../../../..
+        skip:
+          - .git
+          - app/bin
+          - app/frontend/node_modules
+          - app/build/linux/flatpak/build
+          - app/build/linux/flatpak/repo
+          - app/build/linux/flatpak/.flatpak-builder

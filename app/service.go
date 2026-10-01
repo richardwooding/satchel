@@ -151,20 +151,6 @@ func (s *Service) ShowFolder() error { return s.app.Env.OpenFileManager(s.settin
 // Settings returns the current settings.
 func (s *Service) Settings() Settings { return s.settings }
 
-// Autostart reports whether satchel starts at login.
-func (s *Service) Autostart() bool {
-	on, err := s.app.Autostart.IsEnabled()
-	return err == nil && on
-}
-
-// SetAutostart turns start-at-login on or off.
-func (s *Service) SetAutostart(on bool) error {
-	if on {
-		return s.app.Autostart.Enable()
-	}
-	return s.app.Autostart.Disable()
-}
-
 // PickDownloads chooses where received files go. It applies on restart,
 // since receives already open keep writing where they started.
 func (s *Service) PickDownloads() (string, error) {

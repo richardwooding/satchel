@@ -46,6 +46,26 @@ jobs:
         run: wails3 task build
       - run: test -x app/bin/satchel
 
+  # The Flatpak, built exactly as a release builds it, kept as an artifact so
+  # a change can be installed and tried before it is tagged.
+  flatpak:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends flatpak flatpak-builder appstream
+      - run: flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+      - name: Build
+        run: |
+          flatpak-builder --user --install-deps-from=flathub --force-clean --disable-rofiles-fuse \
+            --repo=repo build app/build/linux/flatpak/io.github.richardwooding.satchel.yml
+          flatpak build-bundle --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo \
+            repo satchel.flatpak io.github.richardwooding.satchel
+      - uses: actions/upload-artifact@v5
+        with:
+          name: satchel-flatpak
+          path: satchel.flatpak
+          retention-days: 14
+
   complexity:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest

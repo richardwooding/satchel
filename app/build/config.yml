@@ -7,7 +7,7 @@ version: '3'
 info:
   companyName: "Richard Wooding" # The name of the company
   productName: "satchel" # The name of the application
-  productIdentifier: "com.github.richardwooding.satchel" # The unique product identifier
+  productIdentifier: "io.github.richardwooding.satchel" # The unique product identifier
   description: "Croc-style sharing from the system tray" # The application description
   copyright: "(c) 2026 Richard Wooding, MIT" # Copyright text
   comments: "End-to-end encrypted clipboard and file sharing by code phrase" # Comments

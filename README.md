@@ -25,10 +25,15 @@ From the [latest release](https://github.com/richardwooding/satchel/releases/lat
 |---|---|
 | Fedora 40+ | `sudo dnf install ./satchel-<version>-1.x86_64.rpm` |
 | Ubuntu 24.04+ / Debian 13+ | `sudo apt install ./satchel_<version>_amd64.deb` |
-| Anything else (glibc 2.39+) | `chmod +x satchel-<version>-x86_64.AppImage` and run it |
-| Fedora Atomic, Bluefin | the AppImage, or `rpm-ostree install` the rpm |
+| Bluefin, Fedora Atomic, anything with Flatpak | `flatpak install --user ./satchel-<version>.flatpak` |
 
-The packages also pull in **wl-clipboard** (a recommendation, not a hard
+The Flatpak brings its own GTK and WebKitGTK through the GNOME runtime (it
+fetches the runtime from Flathub if you do not have it) and bundles
+wl-clipboard. There is no AppImage: WebKitGTK looks for its helper processes
+at a path fixed when it was built, so an AppImage made on one distro crashes on
+another — v0.3.0's did, on Fedora.
+
+The rpm and deb also pull in **wl-clipboard** (a recommendation, not a hard
 dependency): on Wayland it is how satchel reads the clipboard while it sits in
 the tray, and how images get onto it.
 
@@ -54,7 +59,9 @@ wake-up endpoint that sees an inbox ID rotating daily and 24 opaque bytes.
 go test -race ./...                 # needs gtk4 + webkitgtk-6.0 headers (cgo)
 make serve                          # relay + browser page on :8080
 cd app && wails3 task build         # the tray app (Wails v3)
-cd app && wails3 task package VERSION=0.0.0   # AppImage, deb, rpm in app/bin
+cd app && wails3 task package VERSION=0.0.0   # deb and rpm in app/bin
+flatpak-builder --user --install-deps-from=flathub --force-clean --repo=repo build \
+  app/build/linux/flatpak/io.github.richardwooding.satchel.yml   # the Flatpak
 ```
 
 MIT licensed.

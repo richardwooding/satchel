@@ -102,8 +102,17 @@ Tags release, not merges. Commits as richard.wooding@gmail.com. A `v*` tag
 runs release.yml: goreleaser builds the relay (archives `satchel-relay_*`,
 ghcr image), then the `desktop` job builds the tray app on Ubuntu 24.04 with
 `wails3 task package VERSION=<tag>` and attaches `satchel_<v>_amd64.deb`,
-`satchel-<v>-1.x86_64.rpm` and `satchel-<v>-x86_64.AppImage` plus
-`desktop-checksums.txt`. nfpm reads `${VERSION}` from the environment (the
+`satchel-<v>-1.x86_64.rpm` and `satchel-<v>.flatpak` plus
+`desktop-checksums.txt`. **No AppImage**: WebKitGTK spawns its helpers from
+a path compiled into the library — the Ubuntu-built v0.3.0 AppImage crashed
+on Fedora, and the local one only "worked" by using the host's helpers.
+The Flatpak (app/build/linux/flatpak) builds inside the GNOME 51 SDK so it
+links against the runtime's glibc; CI's `flatpak` job keeps every push's
+bundle as an artifact. One app ID everywhere: io.github.richardwooding.satchel
+(GTK ApplicationID → Wayland app_id → .desktop name, icon, single-instance
+bus name). In a Flatpak, "Start at login" goes through the Background
+portal (app/autostart.go): Wails' XDG autostart file would land in the
+sandbox's private config dir. nfpm reads `${VERSION}` from the environment (the
 Taskfile exports it), and the `.desktop` file is generated with
 `Exec=satchel %u` + `MimeType=x-scheme-handler/satchel;` — without `%u` no
 link ever reaches the app. Never run `bin/satchel --version`: there is no

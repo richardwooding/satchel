@@ -34,10 +34,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # The tray app: AppImage, deb and rpm, attached to the release goreleaser
-  # just created. Built on Ubuntu 24.04, the oldest distro with WebKitGTK 6,
-  # so the binary's glibc floor is 2.39 — Fedora 40+, Ubuntu 24.04+,
-  # Debian 13+. amd64 only for now; arm64 needs the docker cross build.
+  # The tray app: deb and rpm, and a Flatpak bundle, attached to the release
+  # goreleaser just created. The packages are built on Ubuntu 24.04, the
+  # oldest distro with WebKitGTK 6, so their glibc floor is 2.39 — Fedora
+  # 40+, Ubuntu 24.04+, Debian 13+. There is no AppImage: WebKitGTK spawns
+  # its helpers from a path compiled into the library, so an AppImage built
+  # on one distro crashes on another (seen: v0.3.0 on Fedora).
   desktop:
     needs: goreleaser
     runs-on: ubuntu-24.04
@@ -50,15 +52,20 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libgtk-4-dev libwebkitgtk-6.0-dev pkg-config file
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libgtk-4-dev libwebkitgtk-6.0-dev pkg-config flatpak flatpak-builder
       - name: Install wails3
         run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.26
-      - name: Build AppImage, deb and rpm
+      - name: Build deb and rpm
         working-directory: app
-        env:
-          # linuxdeploy is itself an AppImage; runners have no FUSE.
-          APPIMAGE_EXTRACT_AND_RUN: "1"
         run: wails3 task package VERSION="${GITHUB_REF_NAME#v}"
+      - name: Build the Flatpak
+        run: |
+          echo "${GITHUB_REF_NAME#v}" > app/build/linux/flatpak/VERSION
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak-builder --user --install-deps-from=flathub --force-clean --disable-rofiles-fuse \
+            --repo=repo build app/build/linux/flatpak/io.github.richardwooding.satchel.yml
+          flatpak build-bundle --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo \
+            repo "app/bin/satchel-${GITHUB_REF_NAME#v}.flatpak" io.github.richardwooding.satchel
       - name: Name, checksum and attach
         working-directory: app/bin
         env:
@@ -67,7 +74,6 @@ jobs:
           v="${GITHUB_REF_NAME#v}"
           mv satchel.deb "satchel_${v}_amd64.deb"
           mv satchel.rpm "satchel-${v}-1.x86_64.rpm"
-          mv satchel-x86_64.AppImage "satchel-${v}-x86_64.AppImage"
           sha256sum satchel_* satchel-* > desktop-checksums.txt
           cat desktop-checksums.txt
           gh release upload "$GITHUB_REF_NAME" satchel_* satchel-* desktop-checksums.txt --clobber

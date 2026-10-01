@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=satchel
+GenericName=File and clipboard sharing
+Comment=Share the clipboard and files by code phrase
+Exec=satchel %u
+Icon=io.github.richardwooding.satchel
+Terminal=false
+Categories=Network;FileTransfer;
+Keywords=share;clipboard;send;transfer;croc;
+MimeType=x-scheme-handler/satchel;
+StartupNotify=false

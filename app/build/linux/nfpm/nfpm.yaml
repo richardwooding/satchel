@@ -23,11 +23,11 @@ contents:
   - src: "./bin/satchel"
     dst: "/usr/bin/satchel"
   - src: "./build/linux/satchel-256.png"
-    dst: "/usr/share/icons/hicolor/256x256/apps/satchel.png"
+    dst: "/usr/share/icons/hicolor/256x256/apps/io.github.richardwooding.satchel.png"
   - src: "./build/linux/satchel-512.png"
-    dst: "/usr/share/icons/hicolor/512x512/apps/satchel.png"
-  - src: "./build/linux/satchel.desktop"
-    dst: "/usr/share/applications/satchel.desktop"
+    dst: "/usr/share/icons/hicolor/512x512/apps/io.github.richardwooding.satchel.png"
+  - src: "./build/linux/io.github.richardwooding.satchel.desktop"
+    dst: "/usr/share/applications/io.github.richardwooding.satchel.desktop"
 
 # Default dependencies for the GTK4 + WebKitGTK 6.0 stack (Ubuntu 24.04+ / Debian 13+)
 depends:
