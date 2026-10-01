@@ -55,11 +55,14 @@ modules:
     buildsystem: simple
     build-options:
       # The Taskfile calls wails3 by name, so its install dir is on PATH too.
-      append-path: /usr/lib/sdk/golang/bin:/usr/lib/sdk/node24/bin:/run/build/satchel/go/bin
+      append-path: /usr/lib/sdk/golang/bin:/usr/lib/sdk/node24/bin:/tmp/go/bin
       build-args:
         - --share=network
       env:
-        GOPATH: /run/build/satchel/go
+        # Outside the source tree: under it, go mod tidy and ./... would
+        # treat the whole module cache as packages of satchel's module.
+        GOPATH: /tmp/go
+        GOCACHE: /tmp/go-cache
         GOFLAGS: -modcacherw
         GOTOOLCHAIN: auto
         CGO_ENABLED: "1"
