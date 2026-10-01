@@ -6,21 +6,26 @@
 name: "satchel"
 arch: ${GOARCH}
 platform: "linux"
-version: "0.1.0"
-section: "default"
+version: "${VERSION}"
+section: "net"
 priority: "extra"
-maintainer: ${GIT_COMMITTER_NAME} <${GIT_COMMITTER_EMAIL}>
-description: "A satchel application"
-vendor: "My Company"
-homepage: "https://wails.io"
+maintainer: "Richard Wooding <richard.wooding@gmail.com>"
+description: |-
+  Croc-style sharing from the system tray.
+  Share the clipboard, files and folders to a code phrase or a paired
+  device, end-to-end encrypted through a relay that cannot read them.
+vendor: "Richard Wooding"
+homepage: "https://github.com/richardwooding/satchel"
 license: "MIT"
 release: "1"
 
 contents:
   - src: "./bin/satchel"
-    dst: "/usr/local/bin/satchel"
-  - src: "./build/appicon.png"
-    dst: "/usr/share/icons/hicolor/128x128/apps/satchel.png"
+    dst: "/usr/bin/satchel"
+  - src: "./build/linux/satchel-256.png"
+    dst: "/usr/share/icons/hicolor/256x256/apps/satchel.png"
+  - src: "./build/linux/satchel-512.png"
+    dst: "/usr/share/icons/hicolor/512x512/apps/satchel.png"
   - src: "./build/linux/satchel.desktop"
     dst: "/usr/share/applications/satchel.desktop"
 
@@ -29,6 +34,13 @@ depends:
   - libgtk-4-1
   - libwebkitgtk-6.0-4
 
+# The clipboard goes through wl-clipboard on Wayland (or xclip on X11): GTK's
+# clipboard blocks for an app with no focused window, which a tray app
+# usually is. Without either, satchel still runs but cannot share images and
+# says what to install when the clipboard is unreachable.
+recommends:
+  - wl-clipboard
+
 # Distribution-specific overrides for different package formats
 overrides:
   # RPM packages for Fedora / RHEL / AlmaLinux / Rocky Linux
@@ -36,6 +48,8 @@ overrides:
     depends:
       - gtk4
       - webkitgtk6.0
+    recommends:
+      - wl-clipboard
 
   # Arch Linux packages
   archlinux:

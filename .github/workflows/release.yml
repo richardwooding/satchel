@@ -33,3 +33,41 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # The tray app: AppImage, deb and rpm, attached to the release goreleaser
+  # just created. Built on Ubuntu 24.04, the oldest distro with WebKitGTK 6,
+  # so the binary's glibc floor is 2.39 — Fedora 40+, Ubuntu 24.04+,
+  # Debian 13+. amd64 only for now; arm64 needs the docker cross build.
+  desktop:
+    needs: goreleaser
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libgtk-4-dev libwebkitgtk-6.0-dev pkg-config file
+      - name: Install wails3
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.26
+      - name: Build AppImage, deb and rpm
+        working-directory: app
+        env:
+          # linuxdeploy is itself an AppImage; runners have no FUSE.
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+        run: wails3 task package VERSION="${GITHUB_REF_NAME#v}"
+      - name: Name, checksum and attach
+        working-directory: app/bin
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          mv satchel.deb "satchel_${v}_amd64.deb"
+          mv satchel.rpm "satchel-${v}-1.x86_64.rpm"
+          mv satchel-x86_64.AppImage "satchel-${v}-x86_64.AppImage"
+          sha256sum satchel_* satchel-* > desktop-checksums.txt
+          cat desktop-checksums.txt
+          gh release upload "$GITHUB_REF_NAME" satchel_* satchel-* desktop-checksums.txt --clobber

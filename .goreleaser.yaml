@@ -32,14 +32,16 @@ archives:
     format_overrides:
       - goos: windows
         formats: [zip]
+    # satchel-relay, not satchel: the desktop app's packages sit in the same
+    # release, and an archive called satchel_* would look like the app.
     name_template: >-
-      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+      satchel-relay_{{ .Version }}_{{ .Os }}_{{ .Arch }}
     files:
       - README.md
       - LICENSE
 
 checksum:
-  name_template: "checksums.txt"
+  name_template: "relay-checksums.txt"
 
 snapshot:
   version_template: "{{ incpatch .Version }}-snapshot"

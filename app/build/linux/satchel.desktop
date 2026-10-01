@@ -1,10 +1,12 @@
 [Desktop Entry]
 Type=Application
 Name=satchel
-Exec=satchel
+Exec=satchel %u
 Icon=satchel
-Categories=Development;
+Categories=Network;FileTransfer;Utility;
+Comment=Share the clipboard and files by code phrase
 Terminal=false
 Keywords=wails
 Version=1.0
 StartupNotify=false
+MimeType=x-scheme-handler/satchel;
