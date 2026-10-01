@@ -43,3 +43,17 @@ func TestMenuShapeDistinguishesSessions(t *testing.T) {
 		t.Fatal("progress alone must not rebuild the menu")
 	}
 }
+
+// In a Flatpak the GTK app ID must equal FLATPAK_ID exactly, whatever the
+// test profile says, or WebKit's sandbox aborts the app.
+func TestGTKAppIDInFlatpak(t *testing.T) {
+	t.Setenv("SATCHEL_PROFILE", "b")
+	t.Setenv("FLATPAK_ID", "")
+	if got := gtkAppID(); got != appID+"_b" {
+		t.Fatalf("outside a flatpak: %q", got)
+	}
+	t.Setenv("FLATPAK_ID", appID)
+	if got := gtkAppID(); got != appID {
+		t.Fatalf("inside a flatpak: %q, want %q", got, appID)
+	}
+}

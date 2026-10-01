@@ -51,7 +51,7 @@ func main() {
 		Linux: application.LinuxOptions{
 			DisableQuitOnLastWindowClosed: true,
 			// The program name, and so the Wayland app_id, inherits this.
-			ApplicationID: appID + profileSuffix("_"),
+			ApplicationID: gtkAppID(),
 		},
 		Mac: application.MacOptions{ActivationPolicy: application.ActivationPolicyAccessory},
 		SingleInstance: &application.SingleInstanceOptions{
@@ -189,4 +189,16 @@ func profileSuffix(sep string) string {
 		return sep + p
 	}
 	return ""
+}
+
+// gtkAppID is the GTK application ID. Inside a Flatpak it must be exactly
+// the Flatpak's app ID: WebKit's sandbox refuses a web process whose bus
+// name does not match it ("Invalid sandbox a11y own name"), and the app
+// aborts at start-up. Outside one, a test profile gets its own ID so two
+// copies can run side by side.
+func gtkAppID() string {
+	if id := os.Getenv("FLATPAK_ID"); id != "" {
+		return id
+	}
+	return appID + profileSuffix("_")
 }
