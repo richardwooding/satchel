@@ -221,6 +221,7 @@ function Devices({ peers, pairings, fail }: { peers: Peer[]; pairings: Pairing[]
         <article className="card" key={p.id}>
           <p className="meta"><span className="name">{p.name}</span><span>paired {new Date(p.paired).toLocaleDateString()}</span></p>
           <div className="actions">
+            <button className="gl-btn primary" onClick={() => Service.CallPeer(p.id).catch(fail)}>Call</button>
             <button className="gl-btn ghost" onClick={() => Service.ShareClipboardTo(p.id).catch(fail)}>Send clipboard</button>
             <button className="gl-btn ghost" onClick={() => Service.PickFilesTo(p.id, false).catch(fail)}>Send files…</button>
             <button className="gl-btn ghost stop" onClick={() => Service.Unpair(p.id).catch(fail)}>Unpair</button>

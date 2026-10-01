@@ -18,7 +18,9 @@ import (
 	"github.com/richardwooding/parley/relay"
 
 	"github.com/richardwooding/satchel/internal/bell"
+	"github.com/richardwooding/satchel/internal/manifest"
 	"github.com/richardwooding/satchel/internal/pair"
+	"github.com/richardwooding/satchel/internal/xfer"
 )
 
 // dials counts every connection attempt to the relay.
@@ -198,5 +200,87 @@ func TestUnpairedDeviceCannotReach(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 	if n := len(b.d.State().Receives); n != 0 {
 		t.Fatalf("an unpaired device's ring opened %d sessions", n)
+	}
+}
+
+func TestCallLink(t *testing.T) {
+	good := map[string]string{
+		"https://confab-call.fly.dev/#lion-42-maple": "https://confab-call.fly.dev/#lion-42-maple",
+		"https://confab-call.fly.dev#otter-7-cove":   "https://confab-call.fly.dev/#otter-7-cove",
+	}
+	for in, want := range good {
+		if got, ok := CallLink(in); !ok || got != want {
+			t.Errorf("CallLink(%q) = %q, %v", in, got, ok)
+		}
+	}
+	for _, bad := range []string{
+		"https://evil.example/#lion-42-maple",
+		"http://confab-call.fly.dev/#lion-42-maple",
+		"https://confab-call.fly.dev.evil.example/#lion-42-maple",
+		"https://user@confab-call.fly.dev/#lion-42-maple",
+		"https://confab-call.fly.dev/x#lion-42-maple",
+		"https://confab-call.fly.dev/?a=1#lion-42-maple",
+		"https://confab-call.fly.dev/#host/lion-42-maple",
+		"https://confab-call.fly.dev/#lion-42-maple<script>",
+		"javascript:alert(1)//#lion-42-maple",
+		"file:///etc/passwd#lion-42-maple",
+	} {
+		if got, ok := CallLink(bad); ok {
+			t.Errorf("CallLink(%q) accepted as %q", bad, got)
+		}
+	}
+}
+
+func TestCallPeer(t *testing.T) {
+	url := server(t)
+	a, b := pairedRig(t, url, "desk A"), pairedRig(t, url, "desk B")
+	pairUp(t, a, b)
+	host, err := a.d.CallPeer(ctx(t), peerID(t, a.d, "desk B"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(host, ConfabURL+"/#host/") {
+		t.Fatalf("host link %q", host)
+	}
+	n := b.note(t, "call")
+	if n.Title != "desk A is calling" {
+		t.Fatalf("call note %q", n.Title)
+	}
+	if err := b.d.Accept(n.Phrase, n.From, n.OfferID); err != nil {
+		t.Fatal(err)
+	}
+	open := b.note(t, "open")
+	if want := ConfabURL + "/#" + strings.TrimPrefix(host, ConfabURL+"/#host/"); open.Link != want {
+		t.Fatalf("would open %q, want %q", open.Link, want)
+	}
+	if got, _ := b.clip.Read(); got.Text != "" {
+		t.Fatal("a call invite was put on the clipboard")
+	}
+}
+
+// A paired device that sends something dressed as a call invite gets
+// nothing opened unless it is a confab link.
+func TestHostileCallInviteIsNotOpened(t *testing.T) {
+	url := server(t)
+	a, b := pairedRig(t, url, "a"), pairedRig(t, url, "b")
+	pairUp(t, a, b)
+	p, _ := a.d.peer(peerID(t, a.d, "b"))
+	evil := []byte("https://evil.example/#lion-42-maple")
+	it := xfer.ItemFor(callItem, manifest.KindText, "text/uri-list", evil)
+	if _, err := a.d.shareVia(ctx(t), &p, "call", manifest.Manifest{Items: []manifest.Item{it}}, xfer.Bytes{evil}, nil); err != nil {
+		t.Fatal(err)
+	}
+	n := b.note(t, "call")
+	_ = b.d.Accept(n.Phrase, n.From, n.OfferID)
+	f := b.note(t, "failed")
+	if !strings.Contains(f.Body, "not a confab link") {
+		t.Fatalf("failure note %q", f.Body)
+	}
+	select {
+	case n := <-b.notes:
+		if n.Kind == "open" {
+			t.Fatalf("opened %q", n.Link)
+		}
+	case <-time.After(300 * time.Millisecond):
 	}
 }

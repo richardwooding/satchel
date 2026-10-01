@@ -94,6 +94,14 @@ func (s *Service) buildMenu(st desk.State) *application.Menu {
 			})
 		}
 	}
+	call := m.AddSubmenu("Call")
+	call.Add("New call").OnClick(func(*application.Context) { go s.reportErr("start a call", s.Call) })
+	for _, p := range st.Peers {
+		id := p.ID
+		call.Add(p.Name).OnClick(func(*application.Context) {
+			go s.reportErr("call "+p.Name, func() error { return s.CallPeer(id) })
+		})
+	}
 	m.AddSeparator()
 	m.Add("Receive with a phrase…").OnClick(func(*application.Context) { s.showWindow("receive") })
 	m.Add("Receive from a phone…").OnClick(func(*application.Context) {

@@ -53,11 +53,13 @@ type Clipboard interface {
 
 // Note is something worth a desktop notification.
 type Note struct {
-	Kind   string // "share-ready", "received", "failed", "offer", "paired"
+	Kind   string // "share-ready", "received", "failed", "offer", "call", "open", "paired"
 	Title  string
 	Body   string
 	Folder string // for "received": where the files are, if any
-	// For "offer": what Accept or Decline needs.
+	// For "open": a validated confab link to open in the browser.
+	Link string
+	// For "offer" and "call": what Accept or Decline needs.
 	Phrase  string
 	From    uint32
 	OfferID string
@@ -381,6 +383,10 @@ func (d *Desk) offered(ss *sess, e xfer.Offered) func() {
 		ss.status = "offered"
 		n := Note{Kind: "offer", Title: ss.peer + " wants to send " + e.Summary.Name,
 			Body: describe(e.Summary), Phrase: ss.s.Phrase(), From: uint32(e.From), OfferID: e.ID.String()}
+		if isCall(e.Summary) {
+			ss.title = "call"
+			n.Kind, n.Title, n.Body = "call", ss.peer+" is calling", "Join the call in your browser"
+		}
 		return func() { d.cfg.Notify(n) }
 	}
 	ss.status = "receiving"
@@ -440,6 +446,9 @@ func (d *Desk) received(ss *sess, e xfer.Received) func() {
 		}
 	}
 	data, _ := o.mem.Item(0)
+	if ss.peer != "" && isCall(o.sum) {
+		return d.joinCall(o, data)
+	}
 	if o.sum.Kind == manifest.KindText {
 		o.text = preview(string(data))
 	}
@@ -538,4 +547,16 @@ func human(n int64) string {
 		return fmt.Sprintf("%d B", n)
 	}
 	return fmt.Sprintf("%.1f %s", f, units[i])
+}
+
+// joinCall opens an accepted call invite — only if it is a confab link.
+// Called with mu held.
+func (d *Desk) joinCall(o *offer, data []byte) func() {
+	link, ok := CallLink(string(data))
+	if !ok {
+		o.status, o.err = "failed", ErrBadInvite.Error()
+		return func() { d.cfg.Notify(Note{Kind: "failed", Title: "Call not opened", Body: ErrBadInvite.Error()}) }
+	}
+	o.text = link
+	return func() { d.cfg.Notify(Note{Kind: "open", Title: "Joining the call", Link: link}) }
 }

@@ -85,3 +85,28 @@ func (s *Service) SetDeviceName(name string) error {
 	s.settings.DeviceName = name
 	return saveSettings(s.settings)
 }
+
+// Call starts a confab call in the browser and copies its join link.
+func (s *Service) Call() error {
+	host, join, err := s.desk.Call()
+	if err != nil {
+		return err
+	}
+	s.Copy(join)
+	if err := s.app.Browser.OpenURL(host); err != nil {
+		return err
+	}
+	s.notify(desk.Note{Kind: "share-ready", Title: "Call started", Body: "join link copied — paste it to whoever you're calling"})
+	return nil
+}
+
+// CallPeer starts a call and invites a paired device to it.
+func (s *Service) CallPeer(peerID string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	host, err := s.desk.CallPeer(ctx, peerID)
+	if err != nil {
+		return err
+	}
+	return s.app.Browser.OpenURL(host)
+}

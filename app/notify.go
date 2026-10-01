@@ -16,6 +16,7 @@ import (
 const (
 	catReceived   = "received"
 	catOffer      = "offer"
+	catCall       = "call"
 	actShowFolder = "show-folder"
 	actAccept     = "accept"
 	actDecline    = "decline"
@@ -25,6 +26,7 @@ func (s *Service) setupNotifications() {
 	for _, c := range []notifications.NotificationCategory{
 		{ID: catReceived, Actions: []notifications.NotificationAction{{ID: actShowFolder, Title: "Show in folder"}}},
 		{ID: catOffer, Actions: []notifications.NotificationAction{{ID: actAccept, Title: "Accept"}, {ID: actDecline, Title: "Decline"}}},
+		{ID: catCall, Actions: []notifications.NotificationAction{{ID: actAccept, Title: "Join"}, {ID: actDecline, Title: "Decline"}}},
 	} {
 		if err := s.notes.RegisterNotificationCategory(c); err != nil {
 			log.Printf("notification category %s: %v", c.ID, err)
@@ -61,8 +63,17 @@ func (s *Service) notify(n desk.Note) {
 			break
 		}
 		err = s.notes.SendNotification(opts)
-	case "offer":
+	case "open":
+		// desk only ever sends a link that passed CallLink.
+		if err := s.app.Browser.OpenURL(n.Link); err != nil {
+			log.Printf("open %s: %v", n.Link, err)
+		}
+		return
+	case "offer", "call":
 		opts.CategoryID = catOffer
+		if n.Kind == "call" {
+			opts.CategoryID = catCall
+		}
 		opts.Data = map[string]any{"phrase": n.Phrase, "from": float64(n.From), "offer": n.OfferID}
 		err = s.notes.SendNotificationWithActions(opts)
 	case "share-ready":
