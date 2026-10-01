@@ -6,6 +6,6 @@ export {
     Service
 };
 
-export {
+export type {
     Settings
 } from "./models.js";

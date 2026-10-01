@@ -8,7 +8,10 @@
 //
 // Zips are listed only for modules that provide packages to ./app; the
 // module graph's .mod files are all listed, since resolving the build list
-// reads them. With -toolchain, the Go toolchain module is added too, for an
+// reads them. .info files are not listed: the build does not need them, and
+// unlike .mod and .zip they are not covered by go.sum, so a local cache can
+// hold a copy that differs from the proxy's (seen: atomicgo.dev/cursor) —
+// which flatpak-builder then rejects on its checksum. With -toolchain, the Go toolchain module is added too, for an
 // SDK whose Go is older than go.mod asks for.
 package main
 
@@ -60,7 +63,7 @@ func main() {
 	var out []source
 	for _, m := range all {
 		d := fetch(m)
-		files := []struct{ local, ext string }{{d.Info, ".info"}, {d.GoMod, ".mod"}}
+		files := []struct{ local, ext string }{{d.GoMod, ".mod"}}
 		if needZip[m] {
 			files = append(files, struct{ local, ext string }{d.Zip, ".zip"})
 		}

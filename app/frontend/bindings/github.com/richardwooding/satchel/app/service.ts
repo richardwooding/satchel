@@ -9,7 +9,7 @@
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
-import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Create } from "@wailsio/runtime";
+import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wailsio/runtime";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -156,9 +156,7 @@ export function SetDeviceName(name: string): $CancellablePromise<void> {
  * Settings returns the current settings.
  */
 export function Settings(): $CancellablePromise<$models.Settings> {
-    return $Call.ByID(3375187032).then(($result: any) => {
-        return $$createType0($result);
-    });
+    return $Call.ByID(3375187032);
 }
 
 /**
@@ -193,9 +191,7 @@ export function ShowFolder(): $CancellablePromise<void> {
  * State is the current snapshot, for the window's first render.
  */
 export function State(): $CancellablePromise<desk$0.State> {
-    return $Call.ByID(1463670278).then(($result: any) => {
-        return $$createType1($result);
-    });
+    return $Call.ByID(1463670278);
 }
 
 /**
@@ -218,7 +214,3 @@ export function Unpair(peerID: string): $CancellablePromise<void> {
 export function Version(): $CancellablePromise<string> {
     return $Call.ByID(3684017895);
 }
-
-// Private type creation functions
-const $$createType0 = $models.Settings.createFrom;
-const $$createType1 = desk$0.State.createFrom;
