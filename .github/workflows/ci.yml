@@ -45,6 +45,13 @@ jobs:
         working-directory: app
         run: wails3 task build
       - run: test -x app/bin/satchel
+      # The Flatpak builds without wails3, from the committed bindings.
+      - name: Bindings are up to date
+        run: |
+          git diff --exit-code -- app/frontend/bindings || {
+            echo "::error::app/frontend/bindings is stale: run 'wails3 generate bindings -ts' in app/ and commit"
+            exit 1
+          }
 
   # The Flatpak, built exactly as a release builds it, kept as an artifact so
   # a change can be installed and tried before it is tagged.
@@ -53,6 +60,23 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends flatpak flatpak-builder appstream elfutils
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      # The build is offline, so its source lists must match go.mod/go.sum
+      # and package-lock.json exactly.
+      - name: Flatpak source lists are up to date
+        run: |
+          go run ./app/build/linux/flatpak/gosources > app/build/linux/flatpak/go-sources.json
+          pip install --quiet "git+https://github.com/flatpak/flatpak-builder-tools.git#subdirectory=node"
+          flatpak-node-generator npm app/frontend/package-lock.json -o app/build/linux/flatpak/node-sources.json
+          git diff --exit-code -- app/build/linux/flatpak/*-sources.json || {
+            echo "::error::Flatpak sources are stale — regenerate them (see the manifest header) and commit"
+            exit 1
+          }
       - run: flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
       - name: Build
         run: |

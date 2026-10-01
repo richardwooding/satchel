@@ -107,7 +107,16 @@ ghcr image), then the `desktop` job builds the tray app on Ubuntu 24.04 with
 a path compiled into the library — the Ubuntu-built v0.3.0 AppImage crashed
 on Fedora, and the local one only "worked" by using the host's helpers.
 The Flatpak (app/build/linux/flatpak) builds inside the GNOME 51 SDK so it
-links against the runtime's glibc; CI's `flatpak` job keeps every push's
+links against the runtime's glibc, **offline** as Flathub requires: Go
+modules come from `go-sources.json` (written by `go run
+./app/build/linux/flatpak/gosources`, proxy.golang.org files laid out as a
+`GOPROXY=file://` dir; go.sum still verifies) and npm packages from
+`node-sources.json` (flatpak-node-generator from flatpak-builder-tools).
+wails3 is not used there — the generated TypeScript bindings in
+app/frontend/bindings are committed, and CI's app job fails if they drift.
+**After any go.mod or package-lock.json change, regenerate both source
+lists** (commands in the manifest header) or CI's flatpak job fails; this
+includes Dependabot PRs. CI's `flatpak` job keeps every push's
 bundle as an artifact. One app ID everywhere: io.github.richardwooding.satchel
 (GTK ApplicationID → Wayland app_id → .desktop name, icon, single-instance
 bus name). In a Flatpak, "Start at login" goes through the Background

@@ -8,7 +8,6 @@ app/frontend/dist/*
 *.test
 *.out
 /dist/
-app/frontend/bindings/
 app/build/linux/appimage/build/
 app/.task/
 app/build/linux/appimage/satchel

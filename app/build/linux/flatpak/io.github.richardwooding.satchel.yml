@@ -5,12 +5,18 @@
 # Built inside the GNOME SDK, not repackaged: a binary linked on a host with a
 # newer glibc than the runtime's would not load in the sandbox.
 #
+# The build is offline, as Flathub requires. Every Go module file comes from
+# go-sources.json (proxy.golang.org downloads, laid out as a file:// GOPROXY;
+# go.sum still verifies each one) and every npm package from
+# node-sources.json (pre-filled npm cache). The wails3 CLI is not used: the
+# TypeScript bindings it generates are committed, and CI fails if they drift.
+# Regenerate the source lists after any dependency change:
+#
+#   go run ./app/build/linux/flatpak/gosources > app/build/linux/flatpak/go-sources.json
+#   flatpak-node-generator npm app/frontend/package-lock.json -o app/build/linux/flatpak/node-sources.json
+#
 #   flatpak-builder --user --install-deps-from=flathub --force-clean \
 #     --repo=repo build app/build/linux/flatpak/io.github.richardwooding.satchel.yml
-#
-# The satchel module fetches Go modules, the wails3 CLI and npm packages
-# during the build (build-args --share=network). That suits a release bundle
-# built in CI; Flathub would want them vendored as sources first.
 id: io.github.richardwooding.satchel
 runtime: org.gnome.Platform
 runtime-version: "51"
@@ -54,24 +60,36 @@ modules:
   - name: satchel
     buildsystem: simple
     build-options:
-      # The Taskfile calls wails3 by name, so its install dir is on PATH too.
-      append-path: /usr/lib/sdk/golang/bin:/usr/lib/sdk/node24/bin:/run/build/satchel/.gopath/bin
-      build-args:
-        - --share=network
+      append-path: /usr/lib/sdk/golang/bin:/usr/lib/sdk/node24/bin
       env:
-        # In the build dir, so it survives between build commands (each runs
-        # with a fresh /tmp), and dot-named, so go mod tidy and ./... skip it
-        # rather than treating the module cache as packages of satchel.
+        # In the build dir, so they survive between build commands (each runs
+        # with a fresh /tmp), and dot-named, so the go tool skips them rather
+        # than treating the module cache as packages of satchel.
         GOPATH: /run/build/satchel/.gopath
+        GOMODCACHE: /run/build/satchel/.gopath/pkg/mod
         GOCACHE: /run/build/satchel/.gocache
+        # Modules come only from the vendored proxy directory. go.sum still
+        # checks every one; there is just no checksum database to ask.
+        GOPROXY: file:///run/build/satchel/goproxy
+        GOSUMDB: "off"
         GOFLAGS: -modcacherw
-        GOTOOLCHAIN: auto
+        # The SDK's Go (1.27.1) satisfies go.mod; never fetch another.
+        GOTOOLCHAIN: local
         CGO_ENABLED: "1"
+        # npm installs from the cache node-sources.json fills, never the net.
+        XDG_CACHE_HOME: /run/build/satchel/flatpak-node/cache
+        npm_config_cache: /run/build/satchel/flatpak-node/npm-cache
+        npm_config_nodedir: /usr/lib/sdk/node24
+        npm_config_offline: "true"
     build-commands:
-      - go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.26
+      - go version
+      - cd app/frontend && npm ci --offline && npm run build
       # VERSION is written by the release job; a local build says "dev".
-      - cd app && "$GOPATH/bin/wails3" task build VERSION="$(cat build/linux/flatpak/VERSION 2>/dev/null || echo dev)"
-      - install -Dm755 app/bin/satchel /app/bin/satchel
+      - >-
+        go build -tags production -trimpath -buildvcs=false
+        -ldflags "-w -s -X main.version=$(cat app/build/linux/flatpak/VERSION 2>/dev/null || echo dev)"
+        -o satchel ./app
+      - install -Dm755 satchel /app/bin/satchel
       - install -Dm644 app/build/linux/satchel-256.png /app/share/icons/hicolor/256x256/apps/io.github.richardwooding.satchel.png
       - install -Dm644 app/build/linux/satchel-512.png /app/share/icons/hicolor/512x512/apps/io.github.richardwooding.satchel.png
       - install -Dm644 app/build/linux/flatpak/io.github.richardwooding.satchel.desktop /app/share/applications/io.github.richardwooding.satchel.desktop
@@ -83,6 +101,9 @@ modules:
           - .git
           - app/bin
           - app/frontend/node_modules
+          - app/frontend/dist
           - app/build/linux/flatpak/build
           - app/build/linux/flatpak/repo
           - app/build/linux/flatpak/.flatpak-builder
+      - go-sources.json
+      - node-sources.json
