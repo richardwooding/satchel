@@ -54,7 +54,8 @@ modules:
   - name: satchel
     buildsystem: simple
     build-options:
-      append-path: /usr/lib/sdk/golang/bin:/usr/lib/sdk/node24/bin
+      # The Taskfile calls wails3 by name, so its install dir is on PATH too.
+      append-path: /usr/lib/sdk/golang/bin:/usr/lib/sdk/node24/bin:/run/build/satchel/go/bin
       build-args:
         - --share=network
       env:
