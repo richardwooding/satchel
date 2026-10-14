@@ -8,7 +8,7 @@ require (
 	github.com/richardwooding/flyaffinity v0.1.3
 	github.com/richardwooding/parley v0.6.4
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
-	github.com/wailsapp/wails/v3 v3.0.0-beta.26
+	github.com/wailsapp/wails/v3 v3.0.0-beta.28
 	github.com/zalando/go-keyring v0.2.8
 	golang.org/x/text v0.42.0
 	golang.org/x/time v0.16.0
