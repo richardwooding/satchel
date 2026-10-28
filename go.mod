@@ -3,7 +3,7 @@ module github.com/richardwooding/satchel
 go 1.27.0
 
 require (
-	github.com/andybalholm/brotli v1.2.6
+	github.com/andybalholm/brotli v1.2.7
 	github.com/godbus/dbus/v5 v5.2.2
 	github.com/richardwooding/flyaffinity v0.1.3
 	github.com/richardwooding/parley v0.6.4
